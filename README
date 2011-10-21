@@ -1,4 +1,19 @@
 Mangle Tools
 ============
 A collection of tools for mangling meshes, shape keys, or curves.
-(work in progress)
+
+Mesh Mangler
+===========
+A tool that moves verts around in a mesh.
+
+Ani-Mangler
+===========
+Creates a shape key and moves around it's points randomly.
+Does not (currently) work with curve objects, only meshes.
+
+
+Curve Mangler
+============
+Randomly moves around points in a curve.
+Works with nurbs, poly curves, and beziers.
+

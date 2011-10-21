@@ -37,6 +37,71 @@ import random
 import time
 from math import pi
 
+class MeshManglerOperator(bpy.types.Operator):
+    '''push vertices on the selected object around in random directions to 
+    create a crumpled look.'''
+    bl_idname = "ba.mesh_mangler"
+    bl_label = "Mesh Mangler"
+    bl_options = { "REGISTER", "UNDO" }
+    
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.active_object
+        return ob != None and ob.type == 'MESH'
+
+    def execute(self, context):
+        random.seed( time.time() )
+        
+        mesh = context.active_object.data
+        
+        if mesh.shape_keys != None:
+            self.report( "INFO", "Cannot mangle mesh: Shape keys present" )
+            return {'CANCELLED'}
+        
+        randomMag = bpy.context.scene.random_magnitude
+        
+        for vert in mesh.vertices:
+            xVal = .01 * random.randrange( -randomMag, randomMag )
+            yVal = .01 * random.randrange( -randomMag, randomMag)
+            zVal = .01 * random.randrange( -randomMag, randomMag )
+            vert.co.x = vert.co.x + xVal
+            vert.co.y = vert.co.y + yVal
+            vert.co.z = vert.co.z + zVal
+                
+            
+        return {'FINISHED'}
+
+class AnimanglerOperator(bpy.types.Operator):
+    '''makes a shape key and pushes the verts around on it to set up for random pulsating animation.'''
+    bl_idname = "ba.ani_mangler"
+    bl_label = "Ani-Mangle"
+    
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.active_object
+        return ob != None and ob.type == 'MESH'
+
+    def execute(self, context):
+        scn = context.scene
+        random.seed( time.time() )
+        randomMag = scn.random_magnitude
+        mangleName = scn.mangleName
+        ob = context.object
+        shapeKey = ob.shape_key_add( name=mangleName )
+        verts = shapeKey.data
+        
+        for vert in verts:
+            xVal = .01 * random.randrange( -randomMag, randomMag )
+            yVal = .01 * random.randrange( -randomMag, randomMag )
+            zVal = .01 * random.randrange( -randomMag, randomMag )
+            vert.co.x = vert.co.x + xVal
+            vert.co.y = vert.co.y + yVal
+            vert.co.z = vert.co.z + zVal    
+            
+        return {'FINISHED'}
+
 def curve_main(context):
     
     def mangle_points(points):
@@ -78,7 +143,7 @@ class CurveManglerOp(bpy.types.Operator):
 
 
 class CurveManglerPanel(bpy.types.Panel):
-    bl_label = "Curve Mangler"
+    bl_label = "Mangler Tools"
     bl_space_type = "VIEW_3D"
     bl_region_type="TOOLS"
     bl_context = "objectmode"
@@ -89,11 +154,15 @@ class CurveManglerPanel(bpy.types.Panel):
         col = layout.column()
         col.prop(scn, "random_magnitude")        
         col.operator("ba.curve_mangler")
+        col.operator("ba.mesh_mangler")
+        col.operator("ba.ani_mangler")
 
 
 IntProperty = bpy.props.IntProperty
 
 def register():
+    bpy.utils.register_class(AnimanglerOperator)
+    bpy.utils.register_class(MeshManglerOperator)
     bpy.utils.register_class(CurveManglerOp)
     bpy.utils.register_class(CurveManglerPanel)
     scnType = bpy.types.Scene
@@ -102,6 +171,8 @@ def register():
                               description = "The (+) and (-) number range for a random number to be picked from" )
 
 def unregister():
+    bpy.utils.unregister_class(AnimanglerOperator)
+    bpy.utils.unregister_class(MeshManglerOperator)
     bpy.utils.unregister_class(CurveManglerPanel)
     bpy.utils.unregister_class(CurveManglerOp)
 
