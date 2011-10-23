@@ -23,14 +23,13 @@ bl_info = {
     'name': 'Mangle Tools',
     'author': 'Phil Cote, cotejrp1, (http://www.blenderaddons.com)',
     'version': (0,1),
-    "blender": (2, 5, 9),
-    "api": 35853,
+    "blender": (2, 6, 0),
+    "api": 41098,
     'location': 'VIEW 3D -> TOOLS',
     'description': 'Set of tools to mangle curves, meshes, and shape keys',
     'warning': '',
     'category': 'Object'}
 
-# FYI: NOT AN ANIMATION SCRIPT.  Adding shape keys kills the tool.
 
 import bpy
 import random
@@ -56,7 +55,7 @@ class MeshManglerOperator(bpy.types.Operator):
         mesh = context.active_object.data
         
         if mesh.shape_keys != None:
-            self.report( "INFO", "Cannot mangle mesh: Shape keys present" )
+            self.report( {"INFO"}, "Cannot mangle mesh: Shape keys present" )
             return {'CANCELLED'}
         
         randomMag = bpy.context.scene.random_magnitude
@@ -87,7 +86,7 @@ class AnimanglerOperator(bpy.types.Operator):
         scn = context.scene
         random.seed( time.time() )
         randomMag = scn.random_magnitude
-        mangleName = scn.mangleName
+        mangleName = scn.mangle_name
         ob = context.object
         shapeKey = ob.shape_key_add( name=mangleName )
         verts = shapeKey.data
@@ -142,8 +141,8 @@ class CurveManglerOp(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class CurveManglerPanel(bpy.types.Panel):
-    bl_label = "Mangler Tools"
+class MangleToolsPanel(bpy.types.Panel):
+    bl_label = "Mangle Tools"
     bl_space_type = "VIEW_3D"
     bl_region_type="TOOLS"
     bl_context = "objectmode"
@@ -152,13 +151,15 @@ class CurveManglerPanel(bpy.types.Panel):
         scn = context.scene
         layout = self.layout
         col = layout.column()
-        col.prop(scn, "random_magnitude")        
+        col.prop(scn, "random_magnitude")   
+        col.prop(scn, "mangle_name")     
         col.operator("ba.curve_mangler")
         col.operator("ba.mesh_mangler")
         col.operator("ba.ani_mangler")
 
 
 IntProperty = bpy.props.IntProperty
+StringProperty = bpy.props.StringProperty
 
 def register():
     bpy.utils.register_class(AnimanglerOperator)
@@ -169,7 +170,10 @@ def register():
     scnType.random_magnitude = IntProperty( name = "How Much Mangling", 
                               default = 20, min = 1, max = 30, 
                               description = "The (+) and (-) number range for a random number to be picked from" )
-
+    
+    scnType.mangle_name = StringProperty(name="Mangle Shape Key Name",
+                             default="mangle",
+                             description="Name given for mangled shape keys")
 def unregister():
     bpy.utils.unregister_class(AnimanglerOperator)
     bpy.utils.unregister_class(MeshManglerOperator)
