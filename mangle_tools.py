@@ -38,7 +38,7 @@ from math import pi
 
 class MeshManglerOperator(bpy.types.Operator):
     '''push vertices on the selected object around in random directions to 
-    create a crumpled look.'''
+    create a crumpled look'''
     bl_idname = "ba.mesh_mangler"
     bl_label = "Mesh Mangler"
     bl_options = { "REGISTER", "UNDO" }
@@ -72,7 +72,7 @@ class MeshManglerOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 class AnimanglerOperator(bpy.types.Operator):
-    '''makes a shape key and pushes the verts around on it to set up for random pulsating animation.'''
+    '''makes a shape key and pushes the verts around on it to set up for random pulsating animation'''
     bl_idname = "ba.ani_mangler"
     bl_label = "Ani-Mangle"
     
@@ -80,7 +80,7 @@ class AnimanglerOperator(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         ob = context.active_object
-        return ob != None and ob.type == 'MESH'
+        return ob != None and ob.type in [ 'MESH', 'CURVE' ]
 
     def execute(self, context):
         scn = context.scene
@@ -107,9 +107,10 @@ def curve_main(context):
         for point in points:
             random.seed(time.time())
             random_mag = bpy.context.scene.random_magnitude
-            new_x = point.co.x + (.01 * random.randrange(-random_mag, random_mag))
-            new_y = point.co.y + (.01 * random.randrange(-random_mag, random_mag))
-            new_z = point.co.z + (.01 * random.randrange(-random_mag, random_mag))
+            
+            new_x = point.co.x + (2 * pi *.01 * random.randrange(-random_mag, random_mag))
+            new_y = point.co.y + (2 * pi * .01 * random.randrange(-random_mag, random_mag))
+            new_z = point.co.z + (2 * pi* .01 * random.randrange(-random_mag, random_mag))
             point.co.xyz = new_x, new_y, new_z
     
     
@@ -165,7 +166,7 @@ def register():
     bpy.utils.register_class(AnimanglerOperator)
     bpy.utils.register_class(MeshManglerOperator)
     bpy.utils.register_class(CurveManglerOp)
-    bpy.utils.register_class(CurveManglerPanel)
+    bpy.utils.register_class(MangleToolsPanel)
     scnType = bpy.types.Scene
     scnType.random_magnitude = IntProperty( name = "How Much Mangling", 
                               default = 20, min = 1, max = 30, 
@@ -177,7 +178,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(AnimanglerOperator)
     bpy.utils.unregister_class(MeshManglerOperator)
-    bpy.utils.unregister_class(CurveManglerPanel)
+    bpy.utils.unregister_class(MangleToolsPanel)
     bpy.utils.unregister_class(CurveManglerOp)
 
 
