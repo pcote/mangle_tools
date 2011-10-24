@@ -35,14 +35,28 @@ import bpy
 import random
 import time
 from math import pi
+from pdb import set_trace
+
+def move_coordinate(context, co, is_curve=False):
+    random.seed(time.time())
+    multiplier = 1
+
+    # For curves, we base the multiplier on the circumference formula.
+    # This helps make curve changes more noticable.
+    if is_curve:
+        multiplier = 2 * pi
+    random_mag = context.scene.random_magnitude
+    co.x += .01 * random.randrange( -random_mag, random_mag ) * multiplier
+    co.x += .01 * random.randrange( -random_mag, random_mag )  * multiplier
+    co.x += .01 * random.randrange( -random_mag, random_mag ) * multiplier
+
 
 class MeshManglerOperator(bpy.types.Operator):
     '''push vertices on the selected object around in random directions to 
     create a crumpled look'''
     bl_idname = "ba.mesh_mangler"
-    bl_label = "Mesh Mangler"
+    bl_label = "Mesh Mangle"
     bl_options = { "REGISTER", "UNDO" }
-    
 
     @classmethod
     def poll(cls, context):
@@ -58,24 +72,16 @@ class MeshManglerOperator(bpy.types.Operator):
             self.report( {"INFO"}, "Cannot mangle mesh: Shape keys present" )
             return {'CANCELLED'}
         
-        randomMag = bpy.context.scene.random_magnitude
-        
         for vert in mesh.vertices:
-            xVal = .01 * random.randrange( -randomMag, randomMag )
-            yVal = .01 * random.randrange( -randomMag, randomMag)
-            zVal = .01 * random.randrange( -randomMag, randomMag )
-            vert.co.x = vert.co.x + xVal
-            vert.co.y = vert.co.y + yVal
-            vert.co.z = vert.co.z + zVal
-                
-            
+            move_coordinate(context, vert.co)
+
         return {'FINISHED'}
 
 class AnimanglerOperator(bpy.types.Operator):
     '''makes a shape key and pushes the verts around on it to set up for random pulsating animation'''
     bl_idname = "ba.ani_mangler"
     bl_label = "Ani-Mangle"
-    
+
 
     @classmethod
     def poll(cls, context):
@@ -84,51 +90,21 @@ class AnimanglerOperator(bpy.types.Operator):
 
     def execute(self, context):
         scn = context.scene
-        random.seed( time.time() )
-        randomMag = scn.random_magnitude
         mangleName = scn.mangle_name
         ob = context.object
         shapeKey = ob.shape_key_add( name=mangleName )
         verts = shapeKey.data
         
         for vert in verts:
-            xVal = .01 * random.randrange( -randomMag, randomMag )
-            yVal = .01 * random.randrange( -randomMag, randomMag )
-            zVal = .01 * random.randrange( -randomMag, randomMag )
-            vert.co.x = vert.co.x + xVal
-            vert.co.y = vert.co.y + yVal
-            vert.co.z = vert.co.z + zVal    
+            move_coordinate(context, vert.co, is_curve=ob.type=='CURVE')
             
         return {'FINISHED'}
 
-def curve_main(context):
-    
-    def mangle_points(points):
-        for point in points:
-            random.seed(time.time())
-            random_mag = bpy.context.scene.random_magnitude
-            
-            new_x = point.co.x + (2 * pi *.01 * random.randrange(-random_mag, random_mag))
-            new_y = point.co.y + (2 * pi * .01 * random.randrange(-random_mag, random_mag))
-            new_z = point.co.z + (2 * pi* .01 * random.randrange(-random_mag, random_mag))
-            point.co.xyz = new_x, new_y, new_z
-    
-    
-    ob = context.active_object
-    random.seed( time.time() )
-    splines = context.object.data.splines
-    
-    for spline in splines:
-        if spline.type == 'BEZIER':
-            mangle_points(spline.bezier_points)
-        elif spline.type in ('POLY', 'NURBS'):
-            mangle_points(spline.points)
-        
-    
+
 class CurveManglerOp(bpy.types.Operator):
     '''Mangles a curve to the degree the user specifies'''
     bl_idname = "ba.curve_mangler"
-    bl_label = "Curve Mangler"
+    bl_label = "Curve Mangle"
     bl_options = { 'REGISTER', 'UNDO' }
 
     @classmethod
@@ -138,7 +114,19 @@ class CurveManglerOp(bpy.types.Operator):
 
 
     def execute(self, context):
-        curve_main(context)
+
+        ob = context.active_object
+        splines = context.object.data.splines
+        
+        for spline in splines:
+            if spline.type == 'BEZIER':
+                points = spline.bezier_points
+            elif spline.type in ('POLY', 'NURBS'):
+                points = spline.points
+
+            for point in points:
+                move_coordinate(context, point.co, is_curve=True)
+
         return {'FINISHED'}
 
 
@@ -152,10 +140,12 @@ class MangleToolsPanel(bpy.types.Panel):
         scn = context.scene
         layout = self.layout
         col = layout.column()
-        col.prop(scn, "random_magnitude")   
-        col.prop(scn, "mangle_name")     
+        col.prop(scn, "random_magnitude")
+
         col.operator("ba.curve_mangler")
         col.operator("ba.mesh_mangler")
+        col.separator()
+        col.prop(scn, "mangle_name")
         col.operator("ba.ani_mangler")
 
 
@@ -168,9 +158,9 @@ def register():
     bpy.utils.register_class(CurveManglerOp)
     bpy.utils.register_class(MangleToolsPanel)
     scnType = bpy.types.Scene
-    scnType.random_magnitude = IntProperty( name = "How Much Mangling", 
-                              default = 20, min = 1, max = 30, 
-                              description = "The (+) and (-) number range for a random number to be picked from" )
+    scnType.random_magnitude = IntProperty( name = "Mangle Severity", 
+                              default = 10, min = 1, max = 30, 
+                              description = "Severity of mangling")
     
     scnType.mangle_name = StringProperty(name="Mangle Shape Key Name",
                              default="mangle",
