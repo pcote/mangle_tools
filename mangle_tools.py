@@ -38,6 +38,7 @@ from math import pi
 from pdb import set_trace
 
 def move_coordinate(context, co, is_curve=False):
+    xyz_const = context.scene.constraint_vector
     random.seed(time.time())
     multiplier = 1
 
@@ -46,16 +47,19 @@ def move_coordinate(context, co, is_curve=False):
     if is_curve:
         multiplier = 2 * pi
     random_mag = context.scene.random_magnitude
-    co.x += .01 * random.randrange( -random_mag, random_mag ) * multiplier
-    co.x += .01 * random.randrange( -random_mag, random_mag )  * multiplier
-    co.x += .01 * random.randrange( -random_mag, random_mag ) * multiplier
+    if xyz_const[0]:    
+        co.x += .01 * random.randrange( -random_mag, random_mag ) * multiplier
+    if xyz_const[1]:
+        co.y += .01 * random.randrange( -random_mag, random_mag )  * multiplier
+    if xyz_const[2]:
+        co.z += .01 * random.randrange( -random_mag, random_mag ) * multiplier
 
 
 class MeshManglerOperator(bpy.types.Operator):
     '''push vertices on the selected object around in random directions to 
     create a crumpled look'''
     bl_idname = "ba.mesh_mangler"
-    bl_label = "Mesh Mangle"
+    bl_label = "Mangle Mesh"
     bl_options = { "REGISTER", "UNDO" }
 
     @classmethod
@@ -80,7 +84,7 @@ class MeshManglerOperator(bpy.types.Operator):
 class AnimanglerOperator(bpy.types.Operator):
     '''makes a shape key and pushes the verts around on it to set up for random pulsating animation'''
     bl_idname = "ba.ani_mangler"
-    bl_label = "Ani-Mangle"
+    bl_label = "Mangle Shape Key"
 
 
     @classmethod
@@ -104,7 +108,7 @@ class AnimanglerOperator(bpy.types.Operator):
 class CurveManglerOp(bpy.types.Operator):
     '''Mangles a curve to the degree the user specifies'''
     bl_idname = "ba.curve_mangler"
-    bl_label = "Curve Mangle"
+    bl_label = "Mangle Curve"
     bl_options = { 'REGISTER', 'UNDO' }
 
     @classmethod
@@ -116,6 +120,9 @@ class CurveManglerOp(bpy.types.Operator):
     def execute(self, context):
 
         ob = context.active_object
+        if ob.data.shape_keys != None:
+            self.report({"INFO"}, "Cannot mangle curve.  Shape keys present")
+            return {'CANCELLED'}
         splines = context.object.data.splines
         
         for spline in splines:
@@ -140,6 +147,7 @@ class MangleToolsPanel(bpy.types.Panel):
         scn = context.scene
         layout = self.layout
         col = layout.column()
+        col.prop(scn, "constraint_vector")
         col.prop(scn, "random_magnitude")
 
         col.operator("ba.curve_mangler")
@@ -151,6 +159,7 @@ class MangleToolsPanel(bpy.types.Panel):
 
 IntProperty = bpy.props.IntProperty
 StringProperty = bpy.props.StringProperty
+BoolVectorProperty = bpy.props.BoolVectorProperty
 
 def register():
     bpy.utils.register_class(AnimanglerOperator)
@@ -158,11 +167,18 @@ def register():
     bpy.utils.register_class(CurveManglerOp)
     bpy.utils.register_class(MangleToolsPanel)
     scnType = bpy.types.Scene
+    
+                                    
+    scnType.constraint_vector = BoolVectorProperty(name="Mangle Constraint", 
+                                default=(True,True,True),
+                                subtype='XYZ',
+                                description="Constrains Mangle Direction")
+                                
     scnType.random_magnitude = IntProperty( name = "Mangle Severity", 
                               default = 10, min = 1, max = 30, 
                               description = "Severity of mangling")
     
-    scnType.mangle_name = StringProperty(name="Mangle Shape Key Name",
+    scnType.mangle_name = StringProperty(name="Shape Key Name",
                              default="mangle",
                              description="Name given for mangled shape keys")
 def unregister():
